@@ -1,7 +1,7 @@
 ---
 title: "Supplementary for the paper: Opportunities and Barriers for International Mangrove Conservation Leadership"
 author: ""
-date: "`r Sys.Date()`"
+date: "10/21/2021"
 output:
   bookdown::html_document2:
     theme: united
