@@ -1,5 +1,10 @@
 ---
 title: "Supplementary for the paper: Opportunities and Barriers for International Mangrove Conservation Leadership"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: ""
 date: "`r Sys.Date()`"
 output:
@@ -47,10 +52,24 @@ library(readxl)
 library(mgcv)
 library(nlme)
 library(gratia)
+library(sf)
+library(rnaturalearth)
+library(wordcloud2)
 
 ## load custom functions (by Dr. Gavin Simpson) to calculate GAM derivatives
 source("https://raw.githubusercontent.com/CBMC-GCMP/custom_functions/main/derivFun.R")
 source("https://raw.githubusercontent.com/CBMC-GCMP/custom_functions/main/tsDiagGamm.R")
+
+## Custom function to obtain gtrends in loop 
+
+source("https://raw.githubusercontent.com/CBMC-GCMP/custom_functions/main/search_gtrends")
+
+## Custom function to map gtrends results 
+
+source("https://raw.githubusercontent.com/CBMC-GCMP/custom_functions/main/map_keyword_country.R")
+
+## Custom function to create wordclouds from related gtrend topics
+source("https://raw.githubusercontent.com/CBMC-GCMP/custom_functions/main/wordcloud_topics.R")
 
 ```
 
@@ -345,7 +364,7 @@ mang_tot_plot <- cov_mang_tot %>%
 
 Now we can also reproduce the plot for Figure 1 in main text.
 
-```{r fig.height=8, fig.width=10, fig.cap="See captions in main text for Figure 1"}
+```{r mainfig, fig.height=8, fig.width=10, fig.cap="See captions in main text for Figure 1"}
 
 (pub_plot | (mang_tot_plot / pois_plot)) +
           plot_annotation(tag_levels = "a") &
@@ -367,7 +386,7 @@ To test these two hypothesis we used Ordinary Least Square (OLS) models.
 
 First, let's see again how they look like.
 
-```{r num_pub_tot_area, message=FALSE, warning=FALSE, fig.caption = "Number of publications compared to total mangrove area"}
+```{r numPubArea, message=FALSE, warning=FALSE, fig.caption = "Number of publications compared to total mangrove area"}
 # Preparing data to be modeled
 tomodel <- cov_mang_tot %>% 
           select(country = Country, 
@@ -401,7 +420,7 @@ summary(mod1)
 
 The model `mod1` explains a statistically **not** significant and and weak proportion of variance ($R^2$ = 0.02, $F$(1, 11) = 0.25, $p$ = 0.627, adj. $R^2$ = -0.07). The effect of the mangrove cover on the number of publications is statistically non-significant and positive ($\beta$ = $9.74*10^{-3}$, 95% $CI$ [-0.03, 0.05], $t$(11) = 0.50, $p$ = 0.627; Std. $\beta$ = 0.15, 95% $CI$ [-0.51, 0.81]).
 
-```{r residuals_mod1, fig.cap="Residuals of the full model", fig.show = "hold"}
+```{r resMod1, fig.cap="Residuals of the full model", fig.show = "hold"}
 
 par(mfrow = c(2,2))
 plot(mod1)
@@ -422,7 +441,7 @@ summary(mod2)
 
 As we can see from the summary of the second model without India and Indonesia, `mod2`, the model explains a **statistically significant** and substantial proportion of variance ($R^2$ = 0.68, $F$(1, 9) = 19.53, $p$ = 0.002, adj. $R^2$ = 0.65). The effect of mangrove cover over the number of publications is now significant and positive ($\beta$ = 0.10, 95% $CI$ [0.05, 0.15], $t$(9) = 4.42, $p$ = 0.002; Std. $\beta$ = 0.83, 95% $CI$ [0.40, 1.25]).
 
-```{r}
+```{r plotcountrytot}
 
 p1 <- ggplot(tomodel[-c(1,10),], aes(x = mang_cover, 
                                y = tot_p, 
@@ -458,7 +477,8 @@ p1+p2 + plot_annotation(tag_levels = "A")
 
 Similarly, we wanted to explore the relationships between the rate of publications and the rate of mangrove area loss over the years. We used a similar approach showed in Section \@ref(number-of-publications-vs-total-mangrove-area).
 
-```{r}
+```{r ratepub, message=FALSE, warning=FALSE, fig.cap = "Growth rate of publications compared to the rate of mangrove area loss over the years"}
+
 tomodel <- m_dataset %>% 
           pivot_longer(mangrove_coverage:total_area_lost_between_1996_and_2016) %>% 
           filter(name %in% c("mangrove_coverage")) %>% 
@@ -469,6 +489,7 @@ ggplot(tomodel, aes(x = area_lost, y = pois_rate, label = country)) +
           geom_point() +
           geom_text_repel(size = 5) +
           geom_smooth(method = "lm") +
+          labs(x="Mangrove loss per year (area)", y= "Publications growth rate") +
           theme_bw() +
           theme(panel.grid = element_blank(),
                 strip.background = element_blank()
@@ -476,47 +497,34 @@ ggplot(tomodel, aes(x = area_lost, y = pois_rate, label = country)) +
 
 ```
 
-We can see that Myanmar and Bangladesh in this case are the ones with relative values larger than the others in terms of rate of publications compared to the rate of mangrove area lost.
+From the plot in Figure \@ref(fig:ratepub), we can see that a lot of the relationship is drawn by Indonesia. Myanmar and Bangladesh have a much higher rate of publications compared to other countries. Let's fit the linear model to see the results.
 
 ```{r}
 mod3 <- lm(pois_rate ~ area_lost, data = tomodel)
 
 summary(mod3)
 
-
-
 ```
 
-```{r residuals_mod3, fig.cap="Residuals of the full model", fig.show = "hold"}
+The relationship is not significant, and Bangladesh (11), Indonesia (12), and Myanmar (13), as expected show some issues in the model check plots in Figure \@ref(fig:residualsmod3).
+
+```{r residualsmod3, fig.cap="Residuals of the full model", fig.show = "hold"}
 
 par(mfrow = c(2,2))
-plot(mod1)
+plot(mod3)
 par(mfrow = c(1,1))
 
 ```
 
-The model explains a statistically **not** significant and weak proportion of variance ($R^2$ = 0.11, $F$(1,
-11) = 1.36, $p$ = 0.268, adj. $R^2$ = 0.03). The effect of the rate of area lost for this set of countries in the rate of publications is statistically non-significant and positive ($\beta$ = 3.55e-06, 95% $CI$ [-3.15e-06, 1.03e-05], $t$(11) = 1.17, $p$ = 0.268; Std. $\beta$ = 0.33, 95% $CI$ [-0.29, 0.96]).
-
-Now, if Myanmar and Bangladesh are removed:
+If we remove Myanmar and Bangladesh:
 
 ```{r}
-mod2 <- lm(pois_rate ~ area_lost, data = tomodel[-c(11,13),])
-
-
+mod2 <- lm(pois_rate ~ area_lost, data = tomodel[-c(11, 13),])
 summary(mod2)
-report::report(mod2)
-
-par(mfrow = c(2,2))
-plot(mod2)
-par(mfrow = c(1,1))
-
-
 
 ```
 
-The model explains a **statistically significant** and substantial proportion of variance ($R^2$ = 0.56, $F$(1, 9) = 11.59, $p$ = 0.008, adj. $R^2$ = 0.51). The effect of the rate of area lost for this set of countries in the rate of publications is statistically significant and positive ($\beta$ = 5.24e-06, 95% $CI$ [1.76e-06, 8.73e-06], $t$(9) =
-3.40, $p$ = 0.008; Std. $\beta$ = 0.75, 95% $CI$ [0.25, 1.25]).
+The model explains a **statistically significant** and substantial proportion of variance ($R^2$ = 0.56, $F$(1, 9) = 11.59, $p$ = 0.008, adj. $R^2$ = 0.51). The effect of the rate of area lost for this set of countries in the rate of publications is statistically significant and positive ($\beta$ = 5.24e-06, 95% $CI$ [1.76e-06, 8.73e-06], $t$(9) = 3.40, $p$ = 0.008; Std. $\beta$ = 0.75, 95% $CI$ [0.25, 1.25]).
 
 Why Myanmar and Bangladesh are so different from the rest?
 
@@ -533,35 +541,77 @@ scientific_data %>%
 
 They differ for having a very high rate of publications, where the number of publications increased rapidly in more recent years, and by having a smaller area lost per year rate than other countries with similar rates of publications.
 
-```{r}
+However, if we see again Figure \@ref(fig:residualsmod3), Indonesia, the Cook's distance is large enough to consider it as an outlier. If we only remove Indonesia, the relationship is clearly much different and not significant (Figure \@ref(fig:finalfigpois)
+
+```{r finalfigpois, fig.cap="A) Relationship withouth Myanmar and Banglades is significant; B) Relationship without Indonesia is clearly much different and not significant; C) Relationship without the three countries is still not signficant; D) relationship with all countries."}
+
 p1 <- ggplot(tomodel[-c(11,13),], aes(x = area_lost, 
                                y = pois_rate, 
                                label = country)) +
           geom_point() +
           geom_text_repel(size = 5) +
-          labs(x="Mangrove cover", y= "Total Number of Publications", 
-               title="Without Myanmar and Bangladesh") + 
-          geom_smooth(data = tomodel[-c(11,13),], method = "lm", formula = y ~ x) +
+          labs(x="Mangrove loss per year (area)", 
+               y= "Publications growth rate", 
+               title="Without Myanmar and Bangladesh (significant)") + 
+          geom_smooth(data = tomodel[-c(11,13),], 
+                      col = "red", 
+                      method = "lm",
+                      formula = y ~ x) +
           theme_bw() +
           theme(panel.grid = element_blank(),
                 strip.background = element_blank()
           )
 
-p2 <- ggplot(tomodel, aes(x = area_lost, 
+p2 <- ggplot(tomodel[-c(12),], aes(x = area_lost, 
                                y = pois_rate, 
                                label = country)) +
           geom_point() +
           geom_text_repel(size = 5) +
-          labs(x="Mangrove cover", y= "Total Number of Publications", 
-               title="With Myanmar and Bangladesh") + 
-          geom_smooth(data = tomodel[-c(11,13),], method = "lm", formula = y ~ x) +
+          labs(x="Mangrove loss per year (area)", 
+               y= "Publications growth rate", 
+               title="Without Indonesia") + 
+          geom_smooth(data = tomodel[-c(12),], 
+                      method = "lm", 
+                      formula = y ~ x) +
+          theme_bw() +
+          theme(panel.grid = element_blank(),
+                strip.background = element_blank()
+          )
+
+p3 <- ggplot(tomodel[-c(11,12,13),], aes(x = area_lost, 
+                               y = pois_rate, 
+                               label = country)) +
+          geom_point() +
+          geom_text_repel(size = 5) +
+          labs(x="Mangrove loss per year (area)", 
+               y= "Publications growth rate", 
+               title="Without Myanmar, Bangladesh, and Indonesia") + 
+          geom_smooth(data = tomodel[-c(11, 12, 13),], 
+                      method = "lm", 
+                      formula = y ~ x) +
+          theme_bw() +
+          theme(panel.grid = element_blank(),
+                strip.background = element_blank()
+          )
+
+p4 <- ggplot(tomodel, aes(x = area_lost, 
+                               y = pois_rate, 
+                               label = country)) +
+          geom_point() +
+          geom_text_repel(size = 5) +
+          labs(x="Mangrove loss per year (area)", 
+               y= "Publications growth rate", 
+               title="All countries") + 
+          geom_smooth(data = tomodel, 
+                      method = "lm", 
+                      formula = y ~ x) +
           theme_bw() +
           theme(panel.grid = element_blank(),
                 strip.background = element_blank()
           )
 
 
-p1+p2 + plot_annotation(tag_levels = "A")
+(p1+p2)/(p3+p4) + plot_annotation(tag_levels = "A")
 
 ```
 
@@ -579,7 +629,7 @@ We analyzed if NDCs addressed:
 
 We also noted if NDCs responded to calls for ecosystem monitoring. This evaluation was done by performing a text-based analysis of each country's 2015 and 2020 submitted NDCs. The NDCs were scored based on if mangroves were included in their NDC and the level of commitment to mangrove conservation (Table 1 in main text). Countries could score a maximum of 15 points per NDC, for a total of 30 points if they submitted both a 2015 and 2020 NDC. If an NDC was not submitted, the score "0" was assigned.
 
-Then, we compared the rates of publication against the difference in 2015 and 2020 NDC scores (2020 NDC score - 2015 NDC score). A positive difference in NDC scores reflects that 2020 NDCs have higher levels of commitment to mangrove conservation than in 2015, while a negative difference suggests that commitment levels to mangroves decreased from 2015 to 2020. We hypothesized that higher rates of publication would positively correlate with higher differences in NDC scores, indicating a relationship between growing scientific knowledge and greater level of policy commitments. Instead, we found a strong negative correlation between the two factors (Fig 2), in that higher publication rates correlated with lower differences in NDC scores. This result suggests that while scientific knowledge is being generated, this knowledge is not necessarily translating into policy action and improved commitments for mangrove conservation.
+Then, we compared the rates of publication against the difference in 2015 and 2020 NDC scores (2020 NDC score - 2015 NDC score). A positive difference in NDC scores reflects that 2020 NDCs have higher levels of commitment to mangrove conservation than in 2015, while a negative difference suggests that commitment levels to mangroves decreased from 2015 to 2020. We hypothesized that higher rates of publication would positively correlate with higher differences in NDC scores, indicating a relationship between growing scientific knowledge and greater level of policy commitments. Instead, we found a strong negative correlation between the two factors, in that higher publication rates correlated with lower differences in NDC scores. This result suggests that while scientific knowledge is being generated, this knowledge is not necessarily translating into policy action and improved commitments for mangrove conservation.
 
 ```{r}
 # NDCs graph --------------------------------------------------------------
@@ -601,8 +651,7 @@ ggplot(NDCs,
 
 ```
 
-The model above is **statistically significant** and explains substantial proportion of variance ($R^2$ = 0.65, $F$(1, 11) = 20.32, $p$ \< .001, adj. $R^2$ = 0.62). The effect of the rate of publications over the NDCs difference index is statistically significant and negative ($\beta$ = -60.23, 95% $CI$ [-89.63, -30.82], $t$(11) =
--4.51, $p$ \< .001; Std. $\beta$ = -0.81, 95% $CI$ [-1.20, -0.41]).
+The model above is **statistically significant** and explains substantial proportion of variance ($R^2$ = 0.65, $F$(1, 11) = 20.32, $p$ \< .001, adj. $R^2$ = 0.62). The effect of the rate of publications over the NDCs difference index is statistically significant and negative ($\beta$ = -60.23, 95% $CI$ [-89.63, -30.82], $t$(11) = -4.51, $p$ \< .001; Std. $\beta$ = -0.81, 95% $CI$ [-1.20, -0.41]).
 
 ```{r}
 ndcs_mod <- lm(Difference ~ pois_rate, data = NDCs)
@@ -660,7 +709,7 @@ output_results %>%
 
 Clearly, the word most searched for is the English term, interestingly, the Spanish term had a very low popularity compared to the other languages.
 
-## Analyzing the trend
+## Analysing the trend, an example.
 
 Trends are clearly non-linear so we opted to analyse these trends using Generalized Additive Models (GAMs). All trends show some degree of within-year seasonality which we decided to include into the models.
 
@@ -669,7 +718,6 @@ Trends are clearly non-linear so we opted to analyse these trends using Generali
 First we extract the English language from the Google data:
 
 ```{r}
-
 engl_mod <- output_results$interest_over_time %>% 
           filter(keyword == "Mangrove") %>% 
           mutate(year = lubridate::year(date), month = lubridate::month(date))
@@ -683,18 +731,24 @@ Then a GAM model is fitted using the `gamm` function from the `mgcv` package. In
 m <- gamm(hits ~ s(month, bs = "cc", k = 12) + s(year),
           data = engl_mod)
 
+gratia::appraise(m$gam)
+
 ```
 
-```{r}
-layout(matrix(1:2, ncol = 2))
-plot(m$gam, scale = 0)
-layout(1)
+There is a bit of overdispertion, but first let's address temporal autocorrelation.
 
+```{r fig.show = "hold"}
 
 layout(matrix(1:2, ncol = 2))
 acf(resid(m$lme), lag.max = 36, main = "ACF")
 pacf(resid(m$lme), lag.max = 36, main = "pACF")
 layout(1)
+
+```
+
+We can add ARMA correlation structure to reduce temporal autocorrelation.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
 
 cet <- transform(engl_mod, Time = as.numeric(date) / 1000)
 
@@ -712,17 +766,17 @@ m2 <- gamm(hits ~ s(month, bs = "cc", k = 12) + s(Time, k = 20),
 m3 <- gamm(hits ~ s(month, bs = "cc", k = 12) + s(Time, k = 20),
            data = cet, correlation = corARMA(form = ~ 1|year, p = 3),
            control = ctrl)
+```
 
+```{r}
 anova(m$lme, m1$lme, m2$lme, m3$lme)
-layout(matrix(1:2, ncol = 2))
-plot(m1$gam, scale = 0)
-layout(1)
-layout(matrix(1:2, ncol = 2))
-plot(m2$gam, scale = 0)
-layout(1)
-layout(matrix(1:2, ncol = 2))
-plot(m3$gam, scale = 0)
-layout(1)
+
+
+```
+
+Model `m1` is the best.
+
+```{r fig.show = "hold"}
 
 layout(matrix(1:2, ncol = 2))
 res <- resid(m1$lme, type = "normalized")
@@ -730,34 +784,17 @@ acf(res, main = "ACF - AR(2) errors")
 pacf(res,  main = "pACF- AR(2) errors")
 layout(1)
 
+```
 
-want <- seq(1, nrow(cet), length.out = 214)
-pdat <- with(cet,
-             data.frame(Time = Time[want], date = date[want],
-                        month = month[want]))
+```{r gamplot, fig.cap="Model smooters"}
 
-## predict trend contributions
-p1 <- predict(m1$gam, newdata = pdat, type = "terms", se.fit = TRUE)
-p2 <- predict(m2$gam, newdata = pdat, type = "terms", se.fit = TRUE)
-p3 <- predict(m3$gam, newdata = pdat, type = "terms", se.fit = TRUE)
+draw(m1$gam) +
+          theme_bw()
+```
 
-## combine with the predictions data, including fitted and SEs
-pdat <- transform(pdat,
-                  p1 = p1$fit[,2], se1 = p1$se.fit[,2],
-                  p2 = p2$fit[,2], se2 = p2$se.fit[,2],
-                  p3 = p3$fit[,2], se3 = p3$se.fit[,2])
-op <- par(mar = c(5,4,2,2) + 0.1)
-ylim <- with(pdat, range(p1, p2, p3))
-ylim[1] <- floor(ylim[1])
-ylim[2] <- ceiling(ylim[2])
+From Figure \@ref(fig:gamplot) there is less interest over the late spring summer months, and after July interest seems to raise again. We can calculate derivatives (code below) to see significant increases over time:
 
-plot(hits - mean(hits) ~ date, data = cet, type = "n", ylim = ylim)
-
-lines(p1 ~ date, data = pdat, col = "red")
-lines(p2 ~ date, data = pdat, col = "blue")
-lines(p3 ~ date, data = pdat, col = "forestgreen", lwd = 1)
-
-
+```{r}
 
 want <- seq(1, nrow(cet), length.out = 214)
 pdat <- with(cet,
@@ -766,7 +803,7 @@ pdat <- with(cet,
 p2 <- predict(m1$gam, newdata = pdat, type = "terms", se.fit = TRUE)
 pdat <- transform(pdat, p2 = p2$fit[,2], se2 = p2$se.fit[,2])
 
-df.res <- df.residual(m3$gam)
+df.res <- df.residual(m1$gam)
 crit.t <- qt(0.025, df.res, lower.tail = FALSE)
 pdat <- transform(pdat,
                   upper = p2 + (crit.t * se2),
@@ -775,29 +812,21 @@ pdat <- transform(pdat,
 
 
 Term <- "Time"
-m2.d <- Deriv(m1$gam)
+m1.d <- Deriv(m1$gam)
 
-m2.dci <- confint(m2.d, term = Term)
-m2.dsig <- signifD(pdat$p2, d = m2.d[[Term]]$deriv,
-                   m2.dci[[Term]]$upper, m2.dci[[Term]]$lower)
+m1.dci <- confint(m1.d, term = Term)
+m1.dsig <- signifD(pdat$p2, d = m1.d[[Term]]$deriv,
+                   m1.dci[[Term]]$upper, m1.dci[[Term]]$lower)
 
 
 ylim <- with(pdat, range(upper, lower, p2))
-plot(p2 ~ date, data = pdat, type = "n", ylim = ylim)
-
-lines(p2 ~ date, data = pdat)
-lines(upper ~ date, data = pdat, lty = "dashed")
-lines(lower ~ date, data = pdat, lty = "dashed")
-lines(unlist(m2.dsig$incr) ~ date, data = pdat, col = "blue", lwd = 3)
-lines(unlist(m2.dsig$decr) ~ date, data = pdat, col = "red", lwd = 3)
 
 derivatives <- data.frame(
           date = pdat$date,
-          increasing = unlist(m2.dsig$incr), 
-          decreasing = unlist(m2.dsig$decr), 
+          increasing = unlist(m1.dsig$incr), 
+          decreasing = unlist(m1.dsig$decr), 
           residuals = residuals(m1$gam) + pdat$p2
 )
-
 
 
 (english_plot <- pdat %>% 
@@ -807,14 +836,92 @@ derivatives <- data.frame(
           geom_line(data = derivatives, aes(x=date, y=residuals), col = "gray90") +
           geom_ribbon(aes(ymin = lower, ymax = upper), fill = "grey70", alpha = .5) +
           geom_line() +
-          geom_line(data = derivatives, aes(x=date, y=increasing), col = "red", size = 1.2) +
+          geom_line(data = derivatives, 
+                    aes(x=date, y=increasing), 
+                    col = "red",
+                    size = 1.2) +
           labs(x = "Time", y = "Effect") +
           theme_bw() +
           theme(panel.grid = element_blank()))
         
-
-
-engl_sig <- derivatives %>% 
-          filter(!is.na(increasing))
-engl_sig <- left_join(engl_sig, engl_mod, by = "date")
+ 
 ```
+
+## The 13 countries by language
+
+First, we create lists of countries by language. If we don't separate countries by language, the gtrend tool will *compare* keywords within the country instead of giving overall results. Comparing term popularity in different languages within the same country does not really make sense. Thus, by creating a list by language we can then search the wanted keyword within that list.
+
+```{r}
+# Only 13 countries by language, if wanted countries can be added by using iso2 code, e.g. for the USA would be US or United Kingom: UK. 
+
+eng_speaking <- c("AU", "ID", "NG")
+portuguese_speaking <- c("BR", "MZ")
+bakau_speaking <- c("BD", "IN", "MM", "MY", "PG")
+spanish_speaking <- c("CU", "MX", "VE")
+
+```
+
+Now, we use a custom function that searches for the keyword by looping over the country list.
+
+```{r message=FALSE, warning=FALSE}
+
+eng_data <- search_gtrends(eng_speaking, keyword = "Mangrove")
+
+port_data <- search_gtrends(portuguese_speaking, keyword = "Mangue")
+
+bak_data <- search_gtrends(bakau_speaking, keyword = "Bakau")
+
+spa_data <- search_gtrends(spanish_speaking, keyword = "Manglar")
+
+# here we join all languages
+
+google_trends_data <- rbind(eng_data, port_data, bak_data, spa_data)
+
+```
+
+```{r}
+
+google_trends_data %>% 
+          ggplot(aes(x=date, y=hits)) +
+          geom_line()+
+          facet_wrap(~country) +
+          labs(x="Date", y="Google trend index") +
+          theme_bw() +
+          theme(panel.grid = element_blank())
+
+```
+
+## Topics wordcloud
+
+We can see wordclouds of related queries that were searched, and related topics to Mangroves in google trends.
+
+```{r}
+
+wordcloud_topics("Mangrove",type = "Queries")
+
+```
+
+```{r}
+
+wordcloud_topics("Mangrove",type = "Topics")
+
+```
+
+## Let's map the results by country
+
+```{r message=FALSE, warning=FALSE}
+
+mangrove_map <- map_keyword_country(keyword = "Mangrove")
+
+mangue_map <- map_keyword_country(keyword = "Mangue")
+
+manglar_map <- map_keyword_country(keyword = "Manglar")
+
+bakau_map <- map_keyword_country(keyword = "Bakau")
+
+
+(mangrove_map + mangue_map) / (manglar_map + bakau_map)
+
+```
+
+### 
