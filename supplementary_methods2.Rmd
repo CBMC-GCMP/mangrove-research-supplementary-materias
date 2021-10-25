@@ -1,5 +1,10 @@
 ---
 title: "Supplementary for the paper: Opportunities and Barriers for International Mangrove Conservation Leadership"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: ""
 date: "`r Sys.Date()`"
 output:
@@ -704,7 +709,7 @@ output_results %>%
 
 Clearly, the word most searched for is the English term, interestingly, the Spanish term had a very low popularity compared to the other languages.
 
-## Analysing the trend, an example. 
+## Analysing the trend, an example.
 
 Trends are clearly non-linear so we opted to analyse these trends using Generalized Additive Models (GAMs). All trends show some degree of within-year seasonality which we decided to include into the models.
 
