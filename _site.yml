@@ -1,0 +1,25 @@
+---
+name: "cars"
+output_dir: "docs"
+navbar:
+  title: "Cars"
+  left:
+    - 
+      text: "Home"
+      href: index.html
+    - 
+      text: "Speed and Distance"
+      href: supplementary_methods2.html
+output:
+  bookdown::html_document2:
+    theme: united
+    highlight: kate
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    fig_caption: true
+    number_sections: true
+    global_numbering: true
+    code_folding: show
+    code_download: true
+---

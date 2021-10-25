@@ -1,23 +1,5 @@
 ---
 title: "Supplementary for the paper: Opportunities and Barriers for International Mangrove Conservation Leadership"
-knit: (function(input_file, encoding) {
-  out_dir <- 'docs';
-  rmarkdown::render(input_file,
- encoding=encoding,
- output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
-author: ""
-output:
-  bookdown::html_document2:
-    theme: united
-    highlight: kate
-    toc: true
-    toc_float: true
-    toc_depth: 2
-    fig_caption: true
-    number_sections: true
-    global_numbering: true
-    code_folding: show
-    code_download: true
 ---
 
 ```{r setup, include=FALSE, message=FALSE, warning=FALSE}
