@@ -6,7 +6,6 @@ knit: (function(input_file, encoding) {
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: ""
-date: "`r Sys.Date()`"
 output:
   bookdown::html_document2:
     theme: united
