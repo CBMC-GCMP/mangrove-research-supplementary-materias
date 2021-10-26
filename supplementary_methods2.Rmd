@@ -659,15 +659,42 @@ summary(ndcs_mod)
 
 ```
 
+If we remove PNG, we see a change in the slope regression, but still a significant relationship.
+
+```{r}
+ggplot(NDCs[-c(12),], 
+       aes(x = pois_rate, 
+           y = Difference,
+           label = Country)) +
+          geom_point() +
+          geom_text_repel() +
+          geom_smooth(method = "lm", se = F, col = "red") +
+          theme_bw() +
+          geom_hline(yintercept = 0) +
+          theme(panel.grid = element_blank(),
+                axis.line.y = element_line(),
+                legend.position = "top")
+
+```
+
+```{r}
+ndcs_mod <- lm(Difference ~ pois_rate, data = NDCs[-12,])
+
+summary(ndcs_mod)
+
+```
+
+The model explains a statistically significant and substantial proportion of variance ($R^2$ = 0.60, $F$(1, 10) = 14.85, $p$ = 0.003, adj. $R^2$ = 0.56), and the relationship between the rate of publications and the NDCs scores is statistically significant and negative ($\beta$ = -45.90, 95% $CI$ [-72.44, -19.36], $t$(10) = -3.85, $p$ = 0.003; Std. $\beta$ = -0.77, 95% $CI$ [-1.22, -0.33]).
+
 # Google trends
 
 Google provides information on the interest over certain search terms through a "Interest over time" index. This index represent search interest relative to the highest point on the chart for a given region and time. A value of 100 is the peak popularity for the term. A value of 50 means that the term is half as popular. A score of 0 means there was not enough data for this term.
 
 To download Google trends data we used the gtrendsR package which connects R to a gtrends API. Documentation on the package can be found [here](https://gtrendr.readthedocs.io/en/latest/). In this study we were interested in knowing whether the interest on mangroves changed significantly over time.
 
-First we set keywords, we selected three different languages worldwide through a time span from 2004 to the present day[^1]:
+First we set keywords, we selected three different languages worldwide through a time span from 2004 to the present day[^supplementary_methods2-1]:
 
-[^1]: Note that if you run this code after a while, it will automatically update to the latest result, thus it might differ from the paper.
+[^supplementary_methods2-1]: Note that if you run this code after a while, it will automatically update to the latest result, thus it might differ from the paper.
 
 ```{r}
 
