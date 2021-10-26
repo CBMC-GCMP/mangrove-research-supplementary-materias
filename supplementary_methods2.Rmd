@@ -692,9 +692,9 @@ Google provides information on the interest over certain search terms through a 
 
 To download Google trends data we used the gtrendsR package which connects R to a gtrends API. Documentation on the package can be found [here](https://gtrendr.readthedocs.io/en/latest/). In this study we were interested in knowing whether the interest on mangroves changed significantly over time.
 
-First we set keywords, we selected three different languages worldwide through a time span from 2004 to the present day[^supplementary_methods2-1]:
+First we set keywords, we selected three different languages worldwide through a time span from 2004 to the present day[^1]:
 
-[^supplementary_methods2-1]: Note that if you run this code after a while, it will automatically update to the latest result, thus it might differ from the paper.
+[^1]: Note that if you run this code after a while, it will automatically update to the latest result, thus it might differ from the paper.
 
 ```{r}
 
